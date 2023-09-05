@@ -1,0 +1,702 @@
+<?php
+use Drupal\views\ViewExecutable;
+use Drupal\views\Plugin\views\query\QueryPluginBase;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Form\FormBase;
+use Symfony\Component\HttpFoundation\Request;
+use Drupal\node\Entity\Node;
+use Drupal\block\Entity\Block;
+use Drupal\Core\Session;
+use Drupal\Core\Session\AccountInterface;
+use Drupal\node\NodeInterface;
+use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Url;
+use Drupal\Core\Link;
+use Symfony\Component\HttpFoundation\RedirectResponse;
+/**
+ * @file
+ * Provides functionality for school management helper methods.
+ */
+/**
+   * Loads the tree of a vocabulary.
+   *
+   * @param string $vocabulary
+   *   Machine name
+   *
+   * @return array
+   */
+  function reference_target_id($vid, $str) {
+    // Fetch terms of associated vocabulary id
+    $query = \Drupal::database()->select('taxonomy_term__field_api_reference_code', 'ref');
+    $query->fields('ref', array('bundle'));
+    $query->fields('ref', array('field_api_reference_code_value'));
+    $query->fields('ref', array('entity_id'));
+    $query->condition('ref.bundle', $vid);
+    $query->condition('ref.field_api_reference_code_value', $str);
+    $query->range(0, 1);
+    $result = $query->execute()->fetchObject();
+    if (is_object($result) && count((array) $result)) {
+      return $result->entity_id;
+    }
+  }
+
+  /**
+   * Loads the tree of a vocabulary.
+   *
+   * @param string $vocabulary
+   *   Machine name
+   *
+   * @return array
+   */
+  function get_api_ref_frm_tid($vid, $tid) {
+    // Fetch terms of associated vocabulary id
+    $query = \Drupal::database()->select('taxonomy_term__field_api_reference_code', 'ref');
+    $query->fields('ref', array('bundle'));
+    $query->fields('ref', array('field_api_reference_code_value'));
+    $query->fields('ref', array('entity_id'));
+    $query->condition('ref.bundle', $vid);
+    $query->condition('ref.entity_id', $tid);
+    $query->range(0, 1);
+    $result = $query->execute()->fetchObject();
+    if (is_object($result) && count((array) $result)) {
+      return $result->field_api_reference_code_value;
+    }
+  }
+
+/**
+ * Implements hook_form_alter().
+ */
+function school_management_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+
+  $current_theme = \Drupal::service('theme.manager')->getActiveTheme()->getName();
+  $roles = \Drupal::currentUser()->getRoles();
+  //dynamic marketing page submit school button hide without query string
+  if ($form['#id'] == 'marketing-page-form' && ((in_array('site_admin', $roles)) || (in_array('marketing_admin', $roles)) || (in_array('content_admin', $roles))) ) {
+    $queryString = $_SERVER['QUERY_STRING'];
+    if ($queryString == '') {
+    $form['actions']['submit']['#access']= FALSE;
+    }
+  }
+  // unset field based on static/dynamic marketing page
+  if ($form['#id'] == 'node-marketing-management-edit-form' && ((in_array('site_admin', $roles)) || (in_array('marketing_admin', $roles)) || (in_array('content_admin', $roles))) ) {
+    $form['actions']['back'] = array(
+      "#type" => "submit",
+      "#value" => t('Go Back'),
+      "#weight" => 15,
+      '#attributes' => array(
+        'onclick' => 'window.history.back();return false;',
+      ),
+    );
+    $form['field_page_type']['#access'] = FALSE;
+    if(isset($form['field_page_type']['widget']['#default_value']['0'])){
+      if ($form['field_page_type']['widget']['#default_value']['0'] == 'static') {
+          unset($form['field_search_params']);
+          $form['field_page_type']['#access'] = FALSE;
+          // $form['field_search_params']['#disabled'] = TRUE; for future use
+        }
+        if ($form['field_page_type']['widget']['#default_value']['0'] == 'dynamic') {
+          unset($form['field_marketing_school']);
+          $form['field_page_type']['#access'] = FALSE;
+          $form['field_search_params']['#disabled'] = TRUE;
+        }
+      }
+      //redirect form submit
+      $form['actions']['submit']['#submit'][] = 'school_management_node_marketing_management_edit_form_submit';
+  }
+  //start for admin/school-listing filter show/hide code
+  if ($form['#id'] == 'views-exposed-form-school-list-for-admin-page-1' && (!in_array('administrator', $roles))) {
+      $form['#attached']['library'][] = 'school_management/admin_school_list';
+      $form['state']['#options']['All'] = 'Select State';
+      $form['city']['#options']['All'] = 'Select City';
+      $form['pincode']['#maxlength']= 6;
+      $form['pincode']['#autocomplete_route_name'] = 'school_management.pincode_search_autocomplete';
+      $form['items_selected'] = [
+        '#type' => 'checkbox',
+        '#title' => ('Select All'),
+      ];
+   }
+  //start for admin/marketing-school-listing filter show/hide code
+  if ($form['#id'] == 'views-exposed-form-school-list-for-admin-page-2') {
+      $form['#attached']['library'][] = 'school_management/admin_school_list';
+      $form['state']['#options']['All'] = 'Select State';
+      $form['city']['#options']['All'] = 'Select City';
+      $form['pincode']['#maxlength']= 6;
+      $form['pincode']['#autocomplete_route_name'] = 'school_management.pincode_search_autocomplete';
+  }
+
+  if (($form['#id'] == 'views-exposed-form-school-listing-page-1' )) {
+    if ($current_theme == LEADSCHOOL_THEME_NAME) {
+      $form['#attached']['library'][] = 'school_management/StateCitiesList';
+      //$form['pincode']['#maxlength']= 6;
+      //$form['pincode']['#autocomplete_route_name'] = 'school_management.pincode_search_autocomplete';
+      $form['search']['#maxlength'] = 150;
+
+      /*if(!empty($state) || !empty($city) || !empty($pincode) || !empty($grade) || !empty($board) || !empty($facility) || !empty($search)){
+        deletelatlong_cookie();
+      }*/
+
+    if ((!empty(\Drupal::request()->query->get('latitude')) && (!empty(\Drupal::request()->query->get('longitude')))) || (isset($_COOKIE['latName']) && isset($_COOKIE['longName']))) {
+      $lat = \Drupal::request()->query->get('latitude');
+      $long = \Drupal::request()->query->get('longitude');
+
+      $optionsd = ['12' => '12 KM Range', '15' => '15 KM Range', '20' => '20 KM Range','30' => '30 KM Range', '40' => '40 KM Range', '50' => '50 KM Range', '100' => '100 KM Range'];
+        $form['distance'] = [
+		  '#title' => t('Want to explore more schools in'),
+          '#type' => 'select',
+          '#options' => $optionsd,
+        ];
+      }
+    }
+if (!empty(\Drupal::request()->query->get('search'))) {
+  $search = \Drupal::request()->query->get('search');
+}
+else{
+  $search='';
+}
+    $form['latitude'] = array(
+    '#type' => 'textfield',
+    '#title' => t('lat'),
+    '#default_value' => $lat,
+    '#size' => 60,
+    '#maxlength' => 128,
+    '#prefix' => '<div class="search-latitude">',
+    '#suffix' => '</div>',
+    //'#required' => true,
+    );
+
+    $form['longitude'] = array(
+    '#type' => 'textfield',
+    '#title' => t('long'),
+    '#default_value' => $long,
+    '#size' => 60,
+    '#maxlength' => 128,
+    '#prefix' => '<div class="search-longitude">',
+    '#suffix' => '</div>',
+    //'#required' => true,
+    );
+
+    $form['search'] = array(
+    '#type' => 'textfield',
+    '#title' => t('search'),
+    '#default_value' => $search,
+    '#size' => 60,
+    '#maxlength' => 128,
+    //'#required' => true,
+    );
+  }
+  //for admin/school-listing multiple data selected handler
+    if ($form_id == 'views_form_school_list_for_admin_page_1' && ((in_array('marketing_admin', $roles)) || (in_array('site_admin', $roles)) || (in_array('content_admin', $roles))) ) {
+      ini_set('error_reporting',0);
+      $form['actions']['submit']= [
+        '#type' => 'submit',
+        '#value' => 'Submit Selected Schools',
+        '#weight' => -1,
+      ];
+      $form['actions']['submit']['#submit'][] = 'school_management_form_submit';
+      return $form;
+    }
+}
+
+ /**
+ * Implements hook_form_submit().
+ */
+
+function school_management_form_submit(array $form, FormStateInterface $form_state){
+  global $base_url;
+  $break_nid='';
+  foreach($form_state->getValue('search_api_bulk_form') as $value ){
+    if(!empty($value)){
+      $decode_node=base64_decode($value);
+      $break_node = explode(',',$decode_node);
+      $get_nid= preg_replace('/[^A-Za-z0-9\-]/', '', $break_node);
+      $break_nid .= ",$get_nid[2]";
+    }
+  }
+  $break_nid = substr($break_nid,1);
+  $nids_list = explode(',',$break_nid);
+  $node = Node::create(['type' => 'marketing_management']);
+  $node->set('title', 'Marketting test');
+  $node->set('field_marketing_school', $nids_list);
+  $node->set('field_page_type', 'static');
+  $node->set('uid', 1);
+  $node->langcode = 'en';
+  $node->status = 0;
+  $node->enforceIsNew();
+  $node->created = REQUEST_TIME;
+  $node->changed = REQUEST_TIME;
+  $node->save();
+  $response = new RedirectResponse($base_url ."/node/".$node->id()."/edit");
+  $response->send();
+  return;
+}
+/**
+ * Implements hook_form_submit(). for marketing pages
+ */
+function school_management_node_marketing_management_edit_form_submit(array $form, FormStateInterface $form_state) {
+  $response = new RedirectResponse("/admin/marketing-page");
+  $response->send();
+  return;
+}
+/**
+   * Return the lat and long from gmap url.
+   *
+   * @param string $gmap_url
+   *   Machine name
+   *
+   * @return array
+   */
+  function get_lat_long_from_url($gmap_url) {
+    //Search substring
+    $key = '@';
+    $coordinates = [];
+    if (strpos($gmap_url, $key)) {
+      $break_url = explode($key , $gmap_url);
+      $exp_frm_at = explode(',', $break_url[1]);
+      $coordinates['lat'] = $exp_frm_at[0];
+      $coordinates['long'] = $exp_frm_at[1];
+      return $coordinates;
+    } else {
+      return 0;
+    }
+}
+/**
+ * Return the link array
+ * @param string $field_name
+ * @return array
+ */
+function get_link_field_data($field_name){
+  if (is_array($field_name)){
+    return [
+    'uri' => $field_name[0]['image'],
+    'title' => $field_name[0]['title'] . ',' . $field_name[0]['alt'], //title and alt
+  ];
+} else {
+    return [
+      'uri' => $field_name,
+      'title' => '', //title
+    ];
+  }
+}
+
+/**
+ * Return the link array
+ * @param string $field_name
+ * @return array
+ */
+function get_link_field_datap($field_name){
+  return  [
+    'uri'=> $field_name['image'],
+    'title' => $field_name['title'].','.$field_name['alt'] //title
+  ];
+}
+
+/**
+ * Return the link array
+ * @param string $field_name
+ * @return array
+ */
+function get_link_field_data_array($field_name){
+  foreach($field_name as $key => $image_data){
+    $data[$key]['uri'] = $image_data['url'];
+    $data[$key]['title'] = $image_data['title'] . ',' . $image_data['alt']; //title
+  }
+  return $data;
+}
+
+/**
+ * Return the link array
+ * @param string $field_name
+ * @return array
+ */
+function get_link_field_img_data($field_name){
+  return  [
+    'uri'=> $field_name['url'],
+    'title' => $field_name['title'].','.$field_name['alt'] //title
+  ];
+}
+
+/**
+ * Return the state.
+ * @param array $city_data
+ * @return array
+ */
+function get_state_by_city($city_data){
+  if(isset($city_data['name'])){
+    $city_id = reference_target_id('cities', $city_data['name']);
+  } else {
+    $city_id = $city_data['id'];
+  }
+  $query = \Drupal::database()->select('taxonomy_term__field_state', 'ti');
+  $query->join('taxonomy_term_field_data', 'nfd', 'ti.field_state_target_id = nfd.tid');
+  $query->fields('ti', ['field_state_target_id']);
+  $query->fields('nfd', ['name']);
+  $query->condition('ti.entity_id', $city_id);
+  return $query->execute()->fetchAssoc();
+}
+
+/**
+ * provide cities by entering state.
+ * @param array $data
+ * @return string
+ */
+function get_cities_by_state($state_id){
+  $query = \Drupal::database()->select('taxonomy_term__field_state', 'fs');
+  $query->join('taxonomy_term_field_data', 'fd', 'fs.entity_id = fd.tid');
+  $query->condition('fs.field_state_target_id', $state_id);
+  $query->condition('fs.bundle', 'cities');
+  $query->fields('fs', ['entity_id']);
+  $query->fields('fd', ['name']);
+  return $query->execute()->fetchAllKeyed(1, 1);
+}
+
+/**
+ * implodes the school attributes data.
+ * @param array $data
+ * @return string
+ */
+function get_schools_attribute($data){
+  $attributes[] = $data['city'];
+  $city_data['name'] = $data['city'];
+  $state_data = get_state_by_city($city_data);
+  $attributes[] = $state_data['name'];
+  $attributes[] = $data['pincode'];
+  $attributes[] = $data['board_affiliation'];
+  foreach ($data['grades'] as $grades_data) {
+    $attributes[] = $grades_data; //term id value,
+  }
+  foreach($data['infrastructure'] as $infrastructure_data) {
+    $attributes[] = $infrastructure_data['category']; //term id value,
+  }
+  return implode(', ', $attributes);
+}
+
+/**
+ * Implements hook_enity_type_presave().
+ */
+function school_management_node_presave(Drupal\node\NodeInterface $node){
+  $attributes = [];
+  if (($node->bundle() == 'school') && (!$node->isNew())){
+    $attributes['pincode'] = $node->get('field_pincode')->value;
+    $city_data['id'] = (int) $node->get('field_city')->target_id;
+    $attributes['city'] = get_name_by_tid($city_data['id'], 'cities');
+    $state_data = get_state_by_city($city_data);
+    $attributes['state'] = $state_data['name'];
+    $board_id = (int) $node->get('field_board_affiliation')->target_id;
+    $attributes['board'] = get_name_by_tid($board_id, 'board_affiliation');
+  }
+}
+
+/**
+ * returns the term name.
+ * @param array $tis, $vid
+ * @return string
+ */
+function get_name_by_tid($tid, $vid){
+  $query = \Drupal::database()->select('taxonomy_term_field_data', 'ti');
+  $query->fields('ti', ['name']);
+  $query->condition('ti.vid', $vid);
+  $query->condition('ti.tid', $tid);
+  $result = $query->execute()->fetchAssoc();
+  return $result['name'];
+}
+
+/**
+ * returns the term name.
+ * @param array $tis, $vid
+ * @return string
+ */
+function get_tid_by_name($name, $vid){
+  $query = \Drupal::database()->select('taxonomy_term_field_data', 'ti');
+  $query->fields('ti', ['tid']);
+  $query->condition('ti.vid', $vid);
+  $query->condition('ti.name', $name);
+  $result = $query->execute()->fetchAssoc();
+  return $result['tid'];
+}
+/**
+ * Implements hook_theme().
+ * {@inheritdoc}
+ */
+function school_management_theme($existing, $type, $theme, $path){
+  return [
+    'recent_search_keywords_block_template' => ['variables' => ['data' => null]],
+    'school_infra_gallery_block_template' => ['variables' => ['data' => null]],
+    'calculate_distance_block_template' => ['variables' => ['data' => null]],
+    'school_map' => ['variables' => ['data' => []]],
+  ];
+}
+
+/**
+ * returns the searched result.
+ * @return string
+ */
+function show_search_suggestion(){
+  global $base_url;
+  $url_query_params = \Drupal::request()->query->all();
+  $search_list = eliminate_extra_params($url_query_params);
+  $links = [];
+  if(!empty($search_list)) {
+    foreach($search_list as $key => $filter_val) {
+      if($filter_val != ''){
+        $search_link = \Drupal::request()->query->all();
+        if(!empty($search_link)) {
+          $search_link[$key] = '';
+          if($key =='state' ){
+            $search_link['city'] = '';
+          }
+          $search_link = eliminate_extra_params($search_link);
+          $query_string = http_build_query($search_link);//building query string
+          $link = $base_url.'/find-a-school/schools?'.$query_string;
+          $links[] = Link::fromTextAndUrl($filter_val, Url::fromUri($link));
+        }
+      }
+    }
+  }
+  return $links;
+}
+
+/**
+ *remove extra params from search query string
+ * @param array $search_list
+ * @return array
+ */
+function eliminate_extra_params($search_list){
+  $url_params = ['grade', 'board', 'state', 'city', 'pincode', 'facility', 'search'];
+  $diff = array_diff_key($search_list, $url_params); //checking for extra params
+  if (!empty($diff)) {
+    foreach ($search_list as $key => $val) {
+      if (array_search($key, $url_params) === false) { //removing extra params
+        unset($search_list[$key]);
+      }
+    }
+  }
+  return $search_list;
+}
+
+/**
+ *insert the value in mo-engage track table
+ */
+function moengage_filter_url_track($field){
+  //database insert query
+  $query = \Drupal::database();
+  $query ->insert('moengage_track')
+     ->fields($field)
+     ->execute();
+}
+
+/**
+ * provide alt and title.
+ * @param $node_id $field_name, $field_value
+ * @return array
+ */
+function get_alt_and_title($node_id, $field_name, $field_value){
+  $query = \Drupal::database()->select($field_name, 'bi');
+  $query->condition('bi.entity_id', $node_id);
+  $query->condition('bi.bundle', 'school');
+  $query->fields('bi', [$field_value]);
+  $result =  $query->execute()->fetchAll();
+  $alt_title = ['title'=>'', 'alt'=>''];
+  if ($result[0]->$field_value != ''){
+    $alt_title_str = $result[0]->$field_value;
+    $break_alt_title = explode(',' , $alt_title_str);
+    $alt_title['title'] = $break_alt_title[0];
+    $alt_title['alt'] = $break_alt_title[1];
+  }
+  return $alt_title;
+}
+
+/**
+ *implements hook_node_access
+ */
+function school_management_node_access(NodeInterface $node, $op, AccountInterface $account) {
+  // allow given roles to edit any node (even unpublished and not theirs)
+  if (in_array($op, ['view', 'update']) && $node->bundle() == 'marketing_management' && (in_array('marketing_admin', $account->getRoles()) || in_array('site_admin', $account->getRoles()) || in_array('content_admin', $account->getRoles())) ) {
+    return AccessResult::allowed();
+  }
+  if (in_array($op, ['view', 'update']) && $node->bundle() == 'faq' && in_array('site_admin', $account->getRoles())) {
+    return AccessResult::allowed();
+  }
+  if (in_array($op, ['view', 'update']) && $node->bundle() == 'faq' && (in_array('content_admin', $account->getRoles()) || in_array('site_admin', $account->getRoles()))) {
+    return AccessResult::allowed();
+  }
+}
+
+/**
+ *loads block via machine name
+ */
+function load_block_in_theme($machine_name){
+  $result_block = Block::load($machine_name);
+  return \Drupal::entityTypeManager()->getViewBuilder('block')->view($result_block);
+}
+
+/**
+ *check if nucleaus id exist.
+ */
+
+function nucleus_id_exist($nucleus_id) {
+  $query = \Drupal::database()->select('node__field_nucleus_id', 'ni');
+  $query->condition('ni.bundle', 'school');
+  $query->condition('ni.field_nucleus_id_value', $nucleus_id);
+  $query->fields('ni', ['entity_id']);
+  return $query->execute()->fetchAll()[0]->entity_id;
+}
+
+/**
+ * returns the state names and codes for state taxonomy.
+ * @return array
+ */
+function get_state_codes(){
+  $vid = 'state';
+  $state_list = [0=>['tid'=> 0, 'code'=>'ANY','name'=>'Select State']];
+  $query = \Drupal::database()->select('taxonomy_term_field_data', 'ti');
+  $query->join('taxonomy_term__field_api_reference_code', 'trc', 'ti.tid = trc.entity_id');
+  $query->fields('ti', ['tid', 'name']);
+  $query->fields('trc', ['field_api_reference_code_value']);
+  $query->condition('ti.vid', $vid);
+  $query->condition('trc.bundle', $vid);
+  $query->orderBy('ti.name', 'ASC');
+  $results =  $query->execute()->fetchAll();
+
+  foreach ($results as $keys => $value) {
+    $state_array[$keys]['tid'] = $value->tid;
+    $state_array[$keys]['code'] = $value->field_api_reference_code_value;
+    $state_array[$keys]['name'] = $value->name;
+  }
+  return array_merge($state_list,$state_array);
+}
+
+function get_org_state_code($iso_code){
+  $query = \Drupal::database()->select('taxonomy_term__field_api_reference_code', 'ti');
+  $query->fields('ti', ['entity_id']);
+  $query->condition('ti.bundle', 'state');
+  $query->condition('ti.field_api_reference_code_value', $iso_code);
+  return $query->execute()->fetchField();
+}
+
+/**
+ * returns the total number of schools.
+ * @return integer
+ */
+function number_of_rows(){
+/*if (isset($_COOKIE['latName']) && isset($_COOKIE['longName'])) {
+    $view = views_get_view_result('school_listing', 'page_1');
+    global $base_url;
+    $limit = 12;
+    $lat = $_COOKIE['latName'];
+    $long =  $_COOKIE['longName'];
+    $lat = round($lat, 7); //rounding off to 7 digits
+    $long = round($long, 7);
+    $select = "SELECT * FROM (SELECT *,(((acos(sin(($lat*pi()/180)) * sin((field_geo_location_lat*pi()/180))+cos(($lat*pi()/180)) * cos((field_geo_location_lat*pi()/180)) * cos((($long- field_geo_location_lng)* pi()/180))))*180/pi())*60*1.1515*1.609344 ) as distance FROM leadschool_node__field_geo_location) as X";
+    if(!empty(\Drupal::request()->query->get('distance'))) {
+      $dis = \Drupal::request()->query->get('distance');
+      $select .= ' HAVING distance < '.$dis;
+    }
+    $select .= ' ORDER BY distance ASC';
+    $query = \Drupal::database()->query($select);
+    $query_result = $query->fetchAll();
+    // get shorted school by distance
+    $stored_school = [];
+    foreach($query_result as $key=>$val) {
+      $stored_school[] = $val->entity_id;
+    }
+    $school_list = [];
+    foreach($stored_school as $k=>$id) {
+      foreach($view as $key => $results) {
+        if($id == $results->_entity->get('nid')->value) {
+          $results->index = $k;
+          $school_list[] = $results;
+        }
+      }
+    }
+  }*/
+  //return count($school_list);
+  return 5;
+
+}
+
+function get_node_lat_long($node_id)
+{
+    $query = \Drupal::database()->select('node__field_geo_location', 'bi');
+    $query->fields('bi', array('field_geo_location_lat', 'field_geo_location_lng'));
+    $query->condition('bi.bundle', 'school');
+    $query->condition('bi.entity_id', $node_id);
+    $result = $query->execute()->fetchAll();
+    foreach ($result as $object) {
+        $coordinates['lat'] = $object->field_geo_location_lat;
+        $coordinates['long'] = $object->field_geo_location_lng;
+    }
+    return $coordinates;
+}
+
+
+function get_distance($node_id){
+  if (isset($_COOKIE['Mylat']) && isset($_COOKIE['Mylong'])) {
+    $lat = $_COOKIE['Mylat'];
+    $long = $_COOKIE['Mylong'];
+    $lat = round($lat, 7); //rounding off to 7 digits
+    $long = round($long, 7);
+    $school_coord = get_node_lat_long($node_id);
+    $school_lat = $school_coord['lat'];
+    $school_lng = $school_coord['long'];
+    return calculate_distance_frm_coord($lat, $long, $school_lat, $school_lng, 'K');
+  }
+    return 0;
+}
+
+function get_banner_image($node_id) {
+    $query = \Drupal::database()->select('node__field_banner_image', 'bi');
+    $query->fields('bi', array('field_banner_image_uri'));
+    $query->condition('bi.bundle', 'school');
+    $query->condition('bi.entity_id', $node_id);
+    $result[] = $query->execute()->fetchAll()[0]->field_banner_image_uri;
+    return $result;
+}
+
+
+function get_school_images($node_id) {
+  if (!empty($node_id)) {
+    $facilities = get_banner_image($node_id);
+    $query = \Drupal::database()->select('node__field_select_infrastructure', 'si');
+    $query->leftjoin('paragraph__field_infrastructure_images', 'pi', 'pi.entity_id = si.field_select_infrastructure_target_id');
+    $query->fields('pi', array('field_infrastructure_images_uri'));
+    $query->condition('si.entity_id', $node_id);
+    $query->condition('si.bundle', 'school');
+    $result = $query->execute()->fetchAll();
+    foreach ($result as $object) {
+      $facilities[] = $object->field_infrastructure_images_uri;
+    }
+    return $facilities;
+  }
+}
+
+function find_school_url(){
+
+  $gradearr = explode(',', NURSERYUKG);
+  $dis = '12';
+  $search_text = 'your near by area';
+  $path = '/find-a-school/schools';
+
+  if (isset($_COOKIE['latName']) && isset($_COOKIE['longName'])) {
+    $latitude = $_COOKIE['latName'];
+    $longitude = $_COOKIE['longName'];
+    $query_params['search'] = $search_text; //setting the search text
+    $query_params['grade_available'] = $gradearr; //setting the search text
+    $query_params['distance'] = $dis; //setting the search text
+    $query_params['latitude'] = $latitude;
+    $query_params['longitude'] = $longitude;
+    return http_build_query($query_params);
+  }
+}
+
+/*
+Get Google Geo API Results
+**/
+function get_google_search_result($search_text){
+  $url = GOOGLE_GEOCODE_API.'?address=' . urlencode($search_text) . '&key=' . GOOGLE_PLACE_AUTOCOMPLETE_API_KEY;
+  $ch = curl_init();
+  curl_setopt($ch, CURLOPT_URL, $url);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+  $responseJson = curl_exec($ch);
+  curl_close($ch);
+  return json_decode($responseJson);
+}

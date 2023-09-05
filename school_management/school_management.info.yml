@@ -1,0 +1,5 @@
+name: 'school management'
+type: module
+description: 'School management related functionalities'
+core_version_requirement: ^8.8 || ^9
+package: 'Custom'

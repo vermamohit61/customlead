@@ -1,0 +1,11 @@
+
+<div class="search-result-wrapper">
+{% if data|length > 0 %}
+<strong>Recent Searched Suggestion</strong>
+    <div class="srchd-pills">
+    {% for filter_data in data %}
+       {{ filter_data }}
+    {% endfor %}
+    </div>
+{% endif %}
+</div>

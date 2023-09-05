@@ -1,0 +1,11 @@
+services:
+  common_leadschool.changetheme:
+    class: Drupal\common_leadschool\Theme\ThemechangeThemeNegotiator
+    arguments: []
+    tags:
+      - { name: theme_negotiator, priority: 10 }
+
+  customredirect_event_subscriber:
+    class: Drupal\common_leadschool\EventSubscriber\CommonLeadschoolSubscriber
+    tags:
+      - {name: event_subscriber}

@@ -1,0 +1,7 @@
+aakash_csv.settings:
+  path: '/import-schools'
+  defaults:
+     _form: '\Drupal\lsm_csv\Form\UpdateSchoolForm'
+     _title: 'Import Schools Here'
+  requirements:
+     _permission: 'access csv upload form'

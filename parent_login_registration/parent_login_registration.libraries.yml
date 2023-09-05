@@ -1,0 +1,16 @@
+parentloginjs:
+  version: 1.x
+  js:
+      js/parentloginjs.js: {}
+parentregsloginjs:
+  version: 1.x
+  js:
+      js/parentregsloginjs.js: {}
+parentenquiryjs:
+  version: 1.x
+  js:
+      js/parentenquiryjs.js: {}
+  dependencies:
+    - core/drupal
+    - core/jquery
+    - core/drupalSettings

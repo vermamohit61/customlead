@@ -1,0 +1,40 @@
+school_management.settings_form:
+  path: '/admin/config/filter-settings-form'
+  defaults:
+    _title: 'Filter Settings Form'
+    _form: '\Drupal\school_management\Form\SettingsForm'
+  requirements:
+    _role: 'administrator + content_admin + site_admin'
+
+school_management.getcitylist:
+  path: '/getcitylist/{state_id}'
+  defaults:
+    _title: ''
+    _controller: '\Drupal\school_management\Controller\StateCitiesController::GetCityCallback'
+  requirements:
+    _permission: 'access content'
+
+school_management.admingetcitylist:
+  path: '/admingetcitylist/{state_id}'
+  defaults:
+    _title: ''
+    _controller: '\Drupal\school_management\Controller\StateCitiesController::AdminGetCityCallback'
+  requirements:
+    _permission: 'access content'
+
+school_management.school_search_autocomplete:
+  path: '/school-search-autocomplete'
+  defaults:
+    _controller: '\Drupal\school_management\Controller\StateCitiesController::schoolSearchAutocomplete'
+    _format: json
+  requirements:
+    _access: 'TRUE'
+
+school_management.pincode_search_autocomplete:
+  path: '/pincode-search-autocomplete'
+  defaults:
+    _controller: '\Drupal\school_management\Controller\StateCitiesController::pincodeSearchAutocomplete'
+    _format: json
+  requirements:
+    _access: 'TRUE'
+    

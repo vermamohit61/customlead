@@ -1,0 +1,7 @@
+common_leadschool.settings_form:
+  path: '/admin/config/banner-settings-form'
+  defaults:
+    _title: 'Banner Text Settings'
+    _form: '\Drupal\common_leadschool\Form\BannerSettingsForm'
+  requirements:
+    _role: 'administrator + content_admin + site_admin'

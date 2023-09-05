@@ -1,0 +1,5 @@
+services:
+  custom_twig.twig.TwigExtension:
+    class: Drupal\school_management\TwigExtension
+    tags:
+      - { name: twig.extension }

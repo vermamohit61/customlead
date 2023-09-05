@@ -1,0 +1,17 @@
+{% if data.newly_registered == 'yes' %}
+<div class="thanks-pop-wrapper custom-registration">
+    <div class="thanks-inner">
+      <p id="message-hide" class="close-registration-btn">&#10006;</p>
+      <h3>Thank You For Registering.</h3>
+    <p>Our Counsellor Will Get In Touch With You Shortly </p>
+    </div>
+</div>
+{% else %}
+<div class="thanks-pop-wrapper custom-registration" style="display:none">
+    <div class="thanks-inner">
+      <p id="message-hide" class="close-registration-btn">&#10006;</p>
+      <h3>Thank You For Registering.</h3>
+    <p>Our Counsellor Will Get In Touch With You Shortly </p>
+    </div>
+</div>
+{% endif %}

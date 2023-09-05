@@ -1,0 +1,499 @@
+<?php
+
+/**
+ * @file
+ * Contains parent_login_registration.module.
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\node\Entity\Node;
+use Drupal\user\Entity\User;
+use Drupal\paragraphs\Entity\Paragraph;
+
+/**
+ * Implements hook_help().
+ */
+function parent_login_registration_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Main module help for the get_in_touch module.
+    case 'help.page.parent_login_registration':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('parent login registration') . '</p>';
+      return $output;
+
+    default:
+  }
+}
+
+/**
+ * Implements hook_theme().
+ */
+function parent_login_registration_theme() {
+  return array(
+    'registration_page_template' => array(
+      'variables' => array('data' => NULL),
+    ),
+    'login_page_template' => array(
+      'variables' => array('data' => NULL),
+    ),
+    'parent_enquiryform_template' => array(
+      'variables' => array('data' => NULL),
+    ),
+    'enquirymessage_block_template' => array(
+      'variables' => array('data' => NULL),
+    ),
+    'enquirychild_block_template' => array(
+      'variables' => array('data' => NULL),
+    ),
+    'user_custom_login_block' => array(
+      'variables' => array('data' => NULL),
+    ),
+    'enquirymessagedetail_block_template' => array(
+      'variables' => array('data' => NULL),
+    ),
+    'registration_message_block_template' => array(
+      'variables' => array('data' => NULL),
+    ),
+  );
+}
+
+
+/**
+ * Implements password_generate().
+ *
+ * When user auto generate password
+ */
+function password_generate($chars)
+{
+    $data = '1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcefghijklmnopqrstuvwxyz';
+    return substr(str_shuffle($data), 0, $chars);
+}
+
+/**
+ * Implements insert_otp_callback().
+ * @param int $mobile
+ * @param string $activity_type
+ * @param int $otp
+ * @param int $max_attempt
+ */
+function insert_otp_callback($mobile = NULL, $activity_type = NULL, $otp = NULL, $max_attempt = NULL) {
+  if (!empty($otp) || !empty($mobile)) {
+      $get_otp_exist = otp_exist($mobile, 'expert_otp');
+      $req = '';
+      if (empty($get_otp_exist)) {
+          $activity_date = date('Y-m-d', REQUEST_TIME);
+         \Drupal::database()->insert('otp_details')
+          ->fields([
+            'mobile',
+            'activity_type',
+            'otp',
+            'max_attempt',
+            'activitydate',
+            'changed',
+          ])
+          ->values(array(
+            $mobile,
+            $activity_type,
+            $otp,
+            $max_attempt,
+            $activity_date,
+            REQUEST_TIME
+          ))
+          ->execute();
+
+      }
+  }
+}
+
+/**
+* Implements update_otp_callback().
+* @param int $mobile
+* @param string $activity_type
+* @param int $otp
+* @param int $max_attempt
+*/
+function update_otp_callback($mobile = NULL, $activity_type = NULL, $otp = NULL) {
+  if (!empty($otp) || !empty($mobile)) {
+      $activity_date = date('Y-m-d', REQUEST_TIME);
+      $query = \Drupal::database()->update('otp_details');
+      $query->expression('max_attempt', 'max_attempt + :count', array(':count' => 1));
+      $query->fields([
+      'otp' => $otp,
+      'changed' => REQUEST_TIME,
+      ]);
+      $query->condition('mobile', $mobile);
+      $query->condition('activity_type', $activity_type);
+      $query->condition('activitydate', $activity_date);
+      $query->execute();
+  }
+}
+
+/**
+* Implements otp_exist().
+* @param int $mobile
+* @param string $activity_type
+*/
+function otp_exist($mobile = NULL, $activity_type = NULL) {
+  if (!empty($mobile)) {
+    $activity_date = date('Y-m-d', REQUEST_TIME);
+    $query = \Drupal::database()->select('otp_details', 'ot');
+    $query->fields('ot', array('otp'));
+    $query->condition('mobile', $mobile);
+    $query->condition('activity_type', $activity_type);
+    $query->condition('activitydate', $activity_date);
+    $query->range(0, 1);
+    $result = $query->execute()->fetchField();
+    return $result;
+  }
+}
+
+/**
+* Implements otp_delete().
+* @param int $mobile
+* @param string $activity_type
+*/
+function otp_delete($mobile = NULL, $activity_type = NULL) {
+  if (!empty($mobile) || !empty($activity_type)) {
+    $activity_date = date('Y-m-d', REQUEST_TIME);
+    $query = \Drupal::database()->delete('otp_details');
+    $query->condition('mobile', $mobile);
+    $query->condition('activity_type', $activity_type);
+    $query->condition('activitydate', $activity_date);
+    $query->execute();
+  }
+}
+
+// used to check user id from phone number
+function _check_user_id_with_phone($user_phonenumber){
+  if ($user_phonenumber) {
+    $query = \Drupal::database()->select('users_field_data', 'uf')
+            ->fields('uf', ['uid','mail', 'access']);
+    $query->innerJoin('user__field_mobile_no', 'ufm', 'ufm.entity_id = uf.uid');
+    $query->condition('ufm.field_mobile_no_value', $user_phonenumber);
+    $results = $query->execute()->fetch();
+    if (is_object($results)) {
+      return $results->uid;
+    }
+  }
+}
+
+// check mobile no is exit
+function check_mobile_no($user_phonenumber){
+  if($user_phonenumber){
+    $query = \Drupal::database()->select('user__field_mobile_no', 'ufm')
+    ->fields('ufm', ['field_mobile_no_value']);
+    $query->condition('ufm.field_mobile_no_value', $user_phonenumber);
+    $results = $query->execute()->fetch();
+    if ($results->field_mobile_no_value) {
+      return $results->field_mobile_no_value;
+    }
+    return 0;
+  }
+}
+
+// send otp using curl
+function send_otp_curl($mobileno){
+  $mobileno = '91'.$mobileno;
+  $curl = curl_init();
+  $template_id = TEMPLATE_ID_OTP;
+  $authe_key = AUTH_KEY_OTP;
+  $url = SEND_OTP_URL.$template_id.'&mobile='.$mobileno.'&authkey='.$authe_key;
+  curl_setopt_array($curl, array(
+    CURLOPT_URL => $url,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_ENCODING => "",
+    CURLOPT_MAXREDIRS => 10,
+    CURLOPT_TIMEOUT => 30,
+    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+    CURLOPT_CUSTOMREQUEST => "GET",
+    CURLOPT_HTTPHEADER => array(
+      "content-type: application/json"
+    ),
+  ));
+  $response = curl_exec($curl);
+  $err = curl_error($curl);
+  curl_close($curl);
+  if ($err) {
+    return $err;
+  } else {
+    return json_decode($response, true);
+  }
+}
+
+// verify otp
+function verifyotp($mobileno, $otp){
+  $mobileno = '91'.$mobileno;
+  $authe_key = AUTH_KEY_OTP;
+  $url = VERIFY_OTP_URL.$authe_key.'&mobile='.$mobileno.'&otp='.$otp;
+  $curl = curl_init();
+  curl_setopt_array($curl, array(
+    CURLOPT_URL => $url,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_ENCODING => "",
+    CURLOPT_MAXREDIRS => 10,
+    CURLOPT_TIMEOUT => 30,
+    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+    CURLOPT_CUSTOMREQUEST => "GET",
+  ));
+  $response = curl_exec($curl);
+  $err = curl_error($curl);
+  curl_close($curl);
+  if ($err) {
+    return $err;
+  } else {
+    return json_decode($response, true);
+  }
+}
+
+// resend otp
+function resendotp($mobileno){
+  $mobileno = '91'.$mobileno;
+  $authe_key = AUTH_KEY_OTP;
+  $retrytype = 'text';
+  $url = RESEND_OTP_URL.$authe_key.'&retrytype='.$retrytype.'&mobile='.$mobileno;
+  $curl = curl_init();
+  curl_setopt_array($curl, array(
+    CURLOPT_URL => $url,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_ENCODING => "",
+    CURLOPT_MAXREDIRS => 10,
+    CURLOPT_TIMEOUT => 30,
+    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+    CURLOPT_CUSTOMREQUEST => "GET",
+  ));
+  $response = curl_exec($curl);
+  $err = curl_error($curl);
+  curl_close($curl);
+  if ($err) {
+    return $err;
+  } else {
+    return json_decode($response, true);
+  }
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function parent_login_registration_form_alter(&$form, FormStateInterface $form_state, $form_id){
+  if (($form_id == 'node_banner_management_form') || ($form_id == 'node_banner_management_edit_form')) {
+    $form['field_upload_single_image']['#states'] = [
+      'visible' => [
+        'select[name="field_banner_type"]' => ['value' => 'Text']
+      ]
+    ];
+    $form['field_banner_upload_image']['#states'] = [
+      'visible' => [
+        'select[name="field_banner_type"]' => ['value' => 'Image']
+      ]
+    ];
+    $form['field_banner_text']['#states'] = [
+      'visible' => [
+        ['select[name="field_banner_type"]' => ['value' => 'Video']], 'or',
+        ['select[name="field_banner_type"]' => ['value' => 'Text']],
+      ]
+    ];
+    $form['field_contact_name']['#states'] = [
+      'visible' => [
+        'select[name="field_banner_type"]' => ['value' => 'single_image']
+      ]
+    ];
+     $form['field_cta']['#states'] = [
+      'visible' => [
+        ['select[name="field_banner_type"]' => ['value' => 'Video']], 'or',
+        ['select[name="field_banner_type"]' => ['value' => 'Text']], 'or',
+        ['select[name="field_banner_type"]' => ['value' => 'Image']],
+      ]
+    ];
+    $form['field_banner_background']['#states'] = [
+      'visible' => [
+        ['select[name="field_banner_type"]' => ['value' => 'Video']], 'or',
+        ['select[name="field_banner_type"]' => ['value' => 'Text']], 'or',
+        ['select[name="field_banner_type"]' => ['value' => 'Image']],
+      ]
+    ];
+    $form['field_single_image']['#states'] = [
+      'visible' => [
+        'select[name="field_banner_type"]' => ['value' => 'single_image']
+      ]
+    ];
+    $form['field_banner_custom_image']['#states'] = [
+      'visible' => [
+        'select[name="field_banner_type"]' => ['value' => 'custom_banner']
+      ]
+    ];
+    $form['field_video_url']['#states'] = [
+      'visible' => [
+        'select[name="field_banner_type"]' => ['value' => 'Video']
+      ]
+    ];
+  }
+}
+
+function moengage_track_create1($field){
+  //database insert query
+  $query = \Drupal::database();
+  $query ->insert('moengage_track')
+     ->fields($field)
+     ->execute();
+}
+
+/**
+ * Implements getneculas_id().
+ * get neculas id from school id
+ */
+function getneculas_id($schoolid){
+  $school = explode(',', $schoolid);
+  $query = \drupal::database()->select('node_field_data', 'nfd');
+  $query->fields('nfd' , ['type']);
+  $query->fields('lfn' , ['field_nucleus_id_value']);
+  $query->innerJoin('node__field_nucleus_id','lfn','lfn.entity_id=nfd.nid');
+  $query->condition('lfn.entity_id', $school, 'IN');
+  $query->condition('nfd.type', 'school'); 
+  $result = $query->execute();
+  $rarr = array();
+  foreach($result as $res) {
+    $rarr[] = $res->field_nucleus_id_value;
+  }
+  return $rarr;
+}
+
+/**
+ * Implements getSchoolName().
+ * get school name from school id
+ */
+function getSchoolName($schoolids){
+  $school_id = explode(',', $schoolids);
+  $query = \drupal::database()->select('node_field_data', 'nfd');
+  $query->fields('nfd' , ['title']);
+  $query->condition('nfd.type', 'school'); 
+  $query->condition('nfd.nid', $school_id, 'IN');
+  $result = $query->execute();
+  $school_names = array();
+  foreach($result as $res) {
+    $school_names[] = $res->title;
+  }
+  return $school_names;
+}
+
+/**
+ * Generating Lead Befor Login().
+ * insert lead in aour data base@
+ * @pnumber = Insert Parent Mobile Number
+ */
+
+function generate_lead_befor_login($pnumber){
+  $uid = _check_user_id_with_phone($pnumber);
+  if (!empty($uid)) {
+    $user = User::load($uid);
+    $pname = ($user->field_parent_name->value)?$user->field_parent_name->value:'';
+    $pmobile = ($user->field_mobile_no->value)?$user->field_mobile_no->value:'';
+    $terms = ($user->field_user_whatsup_communication->value)?$user->field_user_whatsup_communication->value:0;
+    $prachild = $user->field_pchild_name->getValue();
+    $field_child_name = [];
+
+    if (isset($_SESSION['schoolid']) && $_SESSION['schoolid']) {
+      $neculasid = getneculas_id($_SESSION['schoolid']);
+      $neculasids = implode(',', $neculasid);
+      $school = explode(',', $neculasid);
+    } else {
+      $neculasid = [];
+      $neculasids = '';
+      $school = [];
+    }
+    $sgrade = [];
+    foreach ($prachild as $key => $element ) {
+      $educationdetails = \Drupal\paragraphs\Entity\Paragraph::load($element['target_id']);
+      $field_child_name = $educationdetails->field_child_name->getValue()[0]['value'];
+      $field_grade = $educationdetails->field_pgrade->getValue()[0]['value'];
+      $sgrade[] = getgrades($educationdetails->field_pgrade->getValue()[0]['value']);
+      $leadid = $pmobile.$field_grade;
+      leadacquire($pname, $pmobile, $field_child_name, $field_grade, $terms, 'enquirylogindata', $leadid, $neculasids, $uid);
+    }
+    //$lead_request = array('pname' => $pname, 'pmobile' => $pmobile, 'ArrE1' => $neculasid, 'ArrE2' => $neculasid, 'ArrE3' => $sgrade);
+    //lead_api($lead_request);
+
+    for ($index = 0; $index < sizeof($neculasid); $index++) {
+      $nuc_id = [$neculasid[$index]];
+      $lead_request = array('pname' => $pname, 'pmobile' => $pmobile, 'ArrE1' => $nuc_id, 'ArrE2' => $nuc_id, 'ArrE3' => $sgrade);
+      lead_api($lead_request);
+    }
+  }
+}
+
+/**
+ * Implements leadacquire().
+ * insert lead in aour data base@
+ * @pname = name paranet name
+ */
+function leadacquire($pname, $pmobile, $pchild='', $grade='', $terms='', $formflag='', $leadid='', $neculasids='', $userid='') {
+  $node = Node::create(['type' => 'get_in_touch']);
+  $node->set('title', $pname);
+  $node->set('field_contact_name', $pname);
+  $node->set('field_mobile_no', $pmobile);
+  $node->set('field_echild_name', $pchild);
+  $node->set('field_egrade', $grade);
+  $node->set('field_whatsapp_communication', $terms);
+  $node->set('field_form_flag', $formflag);
+  $node->set('field_lead_nucleus_ids', $neculasids);
+  $node->set('field_lead_id', $leadid);
+  $node->set('uid', $userid);
+  $node->langcode = 'en';
+  $node->status = 1;
+  $node->enforceIsNew();
+  $node->created = REQUEST_TIME;
+  $node->changed = REQUEST_TIME;
+  $node->save();
+}
+
+// get child from pragraph
+function getmultpleprachild($userid) {
+  $user = User::load($userid);
+  $prachild = $user->field_pchild_name->getValue();
+  $field_child_name = array();
+  foreach ($prachild as $key => $element ) {
+    $educationdetails = Paragraph::load($element['target_id']);
+    $field_child_name[$element['target_id']] = isset($educationdetails->field_child_name->getValue()[0]['value'])?$educationdetails->field_child_name->getValue()[0]['value']:NULL;
+  }
+  return $field_child_name;
+}
+
+// get multiple childname from pragraph
+function getmultpleprachildname($userid) {
+  $user = User::load($userid);
+  $prachild = $user->field_pchild_name->getValue();
+  $field_child_name = array();
+  foreach ($prachild as $key => $element ) {
+    $educationdetails = Paragraph::load($element['target_id']);
+    $field_child_name[$educationdetails->field_child_name->getValue()[0]['value']] = isset($element['target_id'])?$element['target_id']:NULL;
+  }
+  return $field_child_name;
+}
+
+// get multiple gradename from pragraph
+function getmultplepragradename($userid) {
+  $user = User::load($userid);
+  $prachild = $user->field_pchild_name->getValue();
+  $field_grchild_name = array();
+  foreach ($prachild as $key => $element ) {
+    $educationdetails = Paragraph::load($element['target_id']);
+    $field_grchild_name[$educationdetails->field_pgrade->getValue()[0]['value']] = isset($element['target_id'])?$element['target_id']:NULL;
+  }
+  return $field_grchild_name;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

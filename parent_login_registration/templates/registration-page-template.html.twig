@@ -1,0 +1,25 @@
+{#
+/**
+* @file
+* registration page template
+*
+* @see
+*
+* @ingroup themeable
+*/
+#}
+<section class="login-wrapper">
+<div class="login-inner">
+<div class="login-image">
+<img src="../themes/custom/leadschool/images/login-image.png" alt="Home">
+</div>
+<div class="predister-form form-them">
+<h3>welcome to lead school</h3>
+{{ data.registration_form }}
+{% if data.queryurl == '' %}
+<div class="link-wrapper"><span>Already have an account? </span><a href="/user/loginform" class="sign-up">Sign In</a></div>
+{% else %}
+<div class="link-wrapper"><span>Already have an account? </span><a href="/user/loginform?dest={{ data.queryurl }}" class="sign-up">Sign In</a></div>
+{% endif %}
+</div>
+</section>

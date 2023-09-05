@@ -1,0 +1,127 @@
+parent_login_registration.getregistersave:
+  path: '/getregistersave'
+  defaults:
+    _title: ''
+    _controller: '\Drupal\parent_login_registration\Controller\ParentregisterController::RegisterCallback'
+  requirements:
+    _permission: 'access content'
+
+parent_login_registration.registerform:
+  path: '/user/registerform'
+  defaults:
+    _title: 'Register'
+    _controller: '\Drupal\parent_login_registration\Controller\ParentregisterController::RegisterformCallback'
+  requirements:
+    _permission: 'access content'
+
+parent_login_registration.loginform:
+  path: '/user/loginform'
+  defaults:
+    _title: 'Login'
+    _controller: '\Drupal\parent_login_registration\Controller\ParentloginController::LoginformCallback'
+  requirements:
+    _permission: 'access content'
+
+parent_login_registration.loginsave:
+  path: '/login-mobile'
+  defaults:
+    _title: ''
+    _controller: '\Drupal\parent_login_registration\Controller\ParentloginController::LoginsaveCallback'
+  requirements:
+    _permission: 'access content'
+
+parent_login_registration.loginsavesend:
+  path: '/login-mobilesend'
+  defaults:
+    _title: ''
+    _controller: '\Drupal\parent_login_registration\Controller\ParentloginController::LoginsavesendCallback'
+  requirements:
+    _permission: 'access content'
+
+parent_login_registration.resendotp:
+  path: "/resend-otp-self-callback"
+  defaults:
+    _title: ""
+    _controller: '\Drupal\parent_login_registration\Controller\ParentloginController::ResendOtp'
+  requirements:
+    _permission: "access content"
+
+parent_login_registration.registerotp:
+  path: '/signup-otp-verify'
+  defaults:
+    _title: ''
+    _controller: '\Drupal\parent_login_registration\Controller\ParentregisterController::SignupOtp'
+  requirements:
+    _permission: 'access content'
+
+parent_login_registration.resendotpregister:
+  path: "/resend-otp-register"
+  defaults:
+    _title: ""
+    _controller: '\Drupal\parent_login_registration\Controller\ParentregisterController::ResendOtpregister'
+  requirements:
+    _permission: "access content"
+
+parent_login_registration.loginotp:
+  path: '/login-otp-verify'
+  defaults:
+    _title: ''
+    _controller: '\Drupal\parent_login_registration\Controller\ParentloginController::Loginotp'
+  requirements:
+    _permission: 'access content'
+
+parent_login_registration.getenquirysave:
+  path: '/getenquirysave'
+  defaults:
+    _title: ''
+    _controller: '\Drupal\parent_login_registration\Controller\ParentenquiryController::EnquiryCallback'
+  requirements:
+    _permission: 'access content'
+
+parent_login_registration.rediectregister:
+  path: '/rediectregister'
+  defaults:
+    _title: ''
+    _controller: '\Drupal\parent_login_registration\Controller\ParentregisterController::Rediectregister'
+  requirements:
+    _permission: 'access content'
+
+parent_login_registration.singlechildenquirysave:
+  path: '/singlechildenquirysave'
+  defaults:
+    _title: ''
+    _controller: '\Drupal\parent_login_registration\Controller\ParentenquiryController::SinglechildenquiryCallback'
+  requirements:
+    _permission: 'access content'
+
+parent_login_registration.multiplechildenquirysave:
+  path: '/multiplechildenquirysave'
+  defaults:
+    _title: ''
+    _controller: '\Drupal\parent_login_registration\Controller\ParentenquiryController::MultplechildenquiryCallback'
+  requirements:
+    _permission: 'access content'
+
+parent_login_registration.singlenonloginenquirysave:
+  path: '/singlenonloginenquirysave'
+  defaults:
+    _title: ''
+    _controller: '\Drupal\parent_login_registration\Controller\ParentenquiryController::SinglenonloginenquiryCallback'
+  requirements:
+    _permission: 'access content'
+
+parent_login_registration.Loginrediect:
+  path: '/loginrediect'
+  defaults:
+    _title: ''
+    _controller: '\Drupal\parent_login_registration\Controller\ParentregisterController::Loginrediect'
+  requirements:
+    _permission: 'access content'
+
+parent_login_registration.sessionregistrationmessage:
+  path: '/sessionregistrationmessage'
+  defaults:
+    _title: ''
+    _controller: '\Drupal\parent_login_registration\Controller\ParentregisterController::sessionMessageDestroy'
+  requirements:
+    _permission: 'access content'   

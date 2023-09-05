@@ -1,0 +1,10 @@
+moengaeTrackjs:
+  version: 1.x
+  js:
+      js/moengaeTrackjs.js: {}
+googletagmanagerjs:
+  version: 1.x
+  js:
+      js/googletagmanagerjs.js: {}
+  dependencies:
+    

@@ -1,0 +1,5 @@
+name: 'moengage tracking module'
+type: module
+description: 'Moengage Tracking'
+core_version_requirement: ^8.8 || ^9
+package: 'Custom'

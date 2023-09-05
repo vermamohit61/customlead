@@ -1,0 +1,269 @@
+<?php
+/**
+ * @file
+ * Contains moengage_track.module.
+ */
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\views\ViewExecutable;
+use Drupal\views\Plugin\views\query\QueryPluginBase;
+use Drupal\Core\Url;
+use Drupal\node\Entity\Node;
+/**
+ * Implements hook_form_alter().
+ */
+function moengage_track_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  //geting current theme and user_id
+  $current_theme = \Drupal::service('theme.manager')->getActiveTheme()->getName();
+  $userid = \Drupal::currentUser()->id();
+  $roles = \Drupal::currentUser()->getRoles();
+  //after login parent name should be disabled
+  if( $form['#id'] == 'parentenquiry-form' && !empty($userid) && (in_array('parent', $roles))){
+    $form['pname']['#disabled'] = TRUE;
+    $form['pmobile']['#disabled'] = TRUE;
+   }
+  if( $form['#id']=='views-exposed-form-school-listing-page-1' && (!in_array('administrator', $roles))){
+    if ($current_theme == LEADSCHOOL_THEME_NAME) {
+    $form['#attached']['library'][] = 'moengage_track/moengaeTrackjs';
+   return $form;
+  }
+ }
+ //for B2B Lead constant value and js
+ if ($form_id == 'user_form'  && (!in_array('administrator', $roles))) {
+    if ($current_theme == LEADSCHOOL_THEME_NAME) {
+      $b2c_lead = B2C_LEAD_SUBMITTED_EVENT;
+      $form['b2c_lead'] = [
+        '#type' => 'hidden',
+        '#value' => $b2c_lead,
+        '#default_value' => $b2c_lead,
+      ];
+    $form['actions']['submit']['#submit'][] = 'profile_user_callback';    
+    $form['#attached']['library'][] = 'moengage_track/googletagmanagerjs';
+    
+  }
+ }
+// for user/login error message validation
+ if( $form_id == 'user_login_form' && (!in_array('administrator', $roles)) ) {
+    $user_login_final_validate_index = array_search('user_login_final_validate', $form['#validate']);
+    if ($user_login_final_validate_index >= 0) {
+     // print_r('asdsd');
+      $new_validation = 'moengage_track_form_user_login_form_validate';
+      array_splice($form['#validate'], 3, 0, $new_validation);
+    }
+  }  
+}
+/**
+ * Implements hook_form_user_login_form_validate().
+ */
+function moengage_track_form_user_login_form_validate( array &$form, &$form_state ) {
+  $errors = $form_state->getErrors();
+    if (!empty($errors['name'])) {
+      $string_error = $errors['name']->__tostring();
+      if (strpos($string_error, 'Unrecognized username or password') !== FALSE) {
+        $form_state->clearErrors();
+        $form_state->setErrorByName('name', t('Unrecognized username or password.'));
+      }
+    }
+}
+
+/**
+ * Implements hook_form_submit().
+ */
+function moengage_track_form_submit(array $form, FormStateInterface $form_state){
+  //moengage tracking 
+  $current_uri = \Drupal::request()->getRequestUri();
+  $user_id = \Drupal::currentUser()->id();
+  if(!empty($user_id)){
+   $uid = $user_id;
+  }else{
+    $uid = '';
+  }
+$field  = array(
+  'unique_user_id'   => $uid,
+  'first_name' => '',
+  'username' => '',
+  'last_name' => '',
+  'email' => '',
+  'track_type' => 'Filter-Url',
+  'filter_url' => $current_uri,
+  'mobile'=> '',
+  'publish_date' => date('Y-m-d h:m:s')
+);
+moengage_filter_url_track($field);
+
+}
+
+/**
+ * Implements hook_views_query_alter().
+ */
+function moengage_track_views_query_alter(ViewExecutable $view, QueryPluginBase $query) {
+  //alter views Block for dynamic marketing School
+  if ($view->id() == 'school_listing' && $view->getDisplay()->display['id'] == 'block_1') {
+    //get current path from url
+    $current_path = \Drupal::service('path.current')->getPath();  
+    //exploding /node/nid
+    $explode_nid = explode('/',$current_path);  
+      $pattern = "/node/";
+      $find_pattern = preg_match($pattern, $current_path);
+    if (!empty($find_pattern)) {
+          $nid = str_replace("/node/",'',$current_path);
+          $node = Node::load($nid);
+          $get_search = $node->get('field_search_params');
+          $search_url = $get_search->value;
+      }
+      //getting field value from search API Index
+      $fields = $query->getIndex()->getFields();
+      if (!empty($search_url)) {
+      //decode search params value
+          $search_url_decode = rawurldecode($search_url);    
+          $explode_search_url = explode('&',$search_url_decode);
+          $search_url_ex_array = $explode_search_url;         
+      foreach ($search_url_ex_array as $key=>$value) {
+         //add grades query in contextual filter
+          $grades = str_replace("grades[]=",'',$value);
+          if (is_numeric($grades)) {
+            $query->addCondition('field_grades_available', $grades , '=');
+          }
+         //add board query in contextual filter
+          $board = str_replace("board[]=",'',$value);
+          if (is_numeric($board)) {
+            $query->addCondition('field_board_affiliation', $board , '=');
+          }
+         //add board query in contextual filter
+          $state = str_replace("state=",'',$value);
+          if (is_numeric($state)) {
+            $query->addCondition('field_state', $state , '=');
+          }
+         //add city query in contextual filter
+          $city = str_replace("city=",'',$value);
+          if (is_numeric($city)) {
+            $query->addCondition('field_city', $city , '=');
+          }
+        //add pincode query in contextual filter
+          $pincode = str_replace("pincode=",'',$value);
+          if (is_numeric($pincode)) {
+            $query->addCondition('field_pincode', $pincode , '=');
+          }
+        //add infrastructure query in contextual filter
+          $infrastructure = str_replace("infrastructure[]=",'',$value);
+          if (is_numeric($infrastructure)) {
+            $query->addCondition('field_infrastructure', $infrastructure , '=');
+          }
+       } 
+      }else{
+        $query->addCondition('field_grades_available', ' ' , '=');
+        $query->addCondition('field_board_affiliation', ' ' , '=');
+        $query->addCondition('field_state', ' ' , '=');
+        $query->addCondition('field_city', ' ' , '=');
+        $query->addCondition('field_pincode', ' ' , '=');
+        $query->addCondition('field_infrastructure', ' ' , '=');
+      }           
+   
+  }
+ }
+/**
+ * Implements hook_views_data().
+ */
+function moengage_track_views_data() { 
+  $data = []; 
+  $data['moengage_track']['table']['group'] = t('No school found result');
+  $data['moengage_track']['table']['base'] = [
+    'title' => t('No school found Track'),
+    'help' => t('No school found Track data provided.'),
+  ];
+  $data['moengage_track']['id'] = [
+    'title' => t('Moengage primary key'),
+    'help' => t('Moengage primary key provide.'),
+    'field' => [
+      'id' => 'numeric',
+    ],
+  ];
+  $data['moengage_track']['unique_user_id'] = [
+    'title' => t('Unique User id'),
+    'help' => t('Unique User id provide.'),
+    'field' => [
+      'id' => 'standard',
+    ],
+  ];
+  $data['moengage_track']['first_name'] = [
+    'title' => t('First Name'),
+    'help' => t('Select First Name.'),
+    'field' => [
+      'id' => 'standard',
+    ],
+  ];
+  $data['moengage_track']['filter_url'] = [
+    'title' => t('Filter Url'),
+    'help' => t('Select Filter Url.'),
+    'field' => [
+      'id' => 'standard',
+    ],
+  ];
+  $data['moengage_track']['username'] = [
+    'title' => t('Username'),
+    'help' => t('Select Username.'),
+    'field' => [
+      'id' => 'standard',
+    ],
+  ];
+  $data['moengage_track']['last_name'] = [
+    'title' => t('Last Name'),
+    'help' => t('Select Last Name.'),
+    'field' => [
+      'id' => 'standard',
+    ],
+  ];
+  $data['moengage_track']['mobile'] = [
+    'title' => t('Mobile Number'),
+    'help' => t('Select Mobile Number.'),
+    'field' => [
+      'id' => 'numeric',
+    ],
+  ];
+  $data['moengage_track']['email'] = [
+    'title' => t('Email Id'),
+    'help' => t('Select Email Id.'),
+    'field' => [
+      'id' => 'standard',
+    ],
+  ];
+  $data['moengage_track']['track_type'] = [
+    'title' => t('Track Type'),
+    'help' => t('Select Track Type.'),
+    'field' => [
+      'id' => 'standard',
+    ],
+  ];
+  $data['moengage_track']['publish_date'] = [
+    'title' => t('Publish Date'),
+    'help' => t('Select Publish Date.'),
+    'field' => [
+      'id' => 'standard',
+    ],
+  ];
+  $data['moengage_track']['result_found'] = [
+    'title' => t('Result Found'),
+    'help' => t('Select Result Found.'),
+    'field' => [
+      'id' => 'numeric',
+    ],
+  ];
+  $data['moengage_track']['uid'] = [
+    'title' => t('User Id'),
+    'help' => t('Select User Id.'),
+    'field' => [
+      'id' => 'numeric',
+    ],
+  ];
+  
+  return $data;
+ }
+
+ function profile_user_callback($form, FormStateInterface $form_state){
+  if(isset($_GET['dest']) && $_GET['dest']) {    
+    $redirect_url = Url::fromUri('internal:/rediectregister?dest=' . $_GET['dest']);  
+    $form_state->setRedirectUrl($redirect_url);
+   }
+ }
+
+

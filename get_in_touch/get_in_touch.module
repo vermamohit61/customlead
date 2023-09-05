@@ -1,0 +1,50 @@
+<?php
+
+/**
+ * @file
+ * Contains get_in_touch.module.
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Form\FormStateInterface;
+
+/**
+ * Implements hook_help().
+ */
+function get_in_touch_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Main module help for the get_in_touch module.
+    case 'help.page.get_in_touch':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('Get in touch') . '</p>';
+      return $output;
+
+    default:
+  }
+}
+
+/**
+ * Implements hook_theme().
+ */
+function get_in_touch_theme() {
+  return [
+    'getintouch_block' => [
+      'variables' => [
+        'content' => NULL
+      ],
+    'render element' => 'children',
+    ],
+  ];
+}
+
+function moengage_track_create($field){
+  //database insert query 
+  $query = \Drupal::database();
+  $query ->insert('moengage_track')
+     ->fields($field)
+     ->execute();
+
+}
+
+

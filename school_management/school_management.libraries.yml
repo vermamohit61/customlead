@@ -1,0 +1,10 @@
+StateCitiesList:
+  version: 1.x
+  js:
+      js/StateCitiesList.js: {}
+admin_school_list:
+  version: 1.x
+  js:
+      js/admin_school_list.js: {}
+  dependencies:
+    

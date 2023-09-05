@@ -1,0 +1,41 @@
+<?php
+/* hook_schema() */
+
+function common_leadschool_schema() {
+
+    $schema['api_response'] = array(
+        'fields' => array(
+          'id' => array(
+            'type' => 'serial',
+            'not null' => TRUE,
+          ),
+          'type' => array(
+            'type' => 'varchar',
+            'description' => 'api type',
+            'length' => 255,
+          ),
+          'request_data' => array(
+            'type' => 'text',
+            'size' => 'big',
+            'not null' => FALSE,
+          ),
+          'response_data' => array(
+            'type' => 'text',
+            'size' => 'big',
+            'not null' => FALSE,
+          ),
+          'created_date' => array(
+            'type' => 'int',
+            'not null' => TRUE,
+            'description' => 'Timestamp when product was created.',
+            'default' => 0,
+          ),
+        ),
+        'primary key' => array('id'),
+      );
+
+      return $schema;
+
+}
+
+?>

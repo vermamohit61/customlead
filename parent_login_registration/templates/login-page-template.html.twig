@@ -1,0 +1,17 @@
+<!-- Add you custom twig html here -->
+<section class="login-wrapper">
+<div class="login-inner">
+<div class="login-image">
+<img src="../themes/custom/leadschool/images/login-image.png" alt="Home">
+</div>
+<div class="plogin-pform form-them">
+<h3>Login</h3>
+{{ data.parent_login_form }}
+{% if data.queryurl == '' %}
+<div class="link-wrapper"><span>Don't have an account? </span><a href="/user/registerform" class="sign-up">Sign Up</a></div>
+{% else %}
+<div class="link-wrapper"><span>Don't have an account? </span><a href="/user/registerform?dest={{ data.queryurl }}" class="sign-up">Sign Up</a></div>
+{% endif %}
+</div>
+</div>
+</section>

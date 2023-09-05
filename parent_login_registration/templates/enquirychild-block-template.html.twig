@@ -1,0 +1,14 @@
+<div class="popup formpop mchilds" style="display:none">
+  <div class="popup-form-box">
+    <a class="close-btn" href="javascript:;">&#10006;</a>
+    <h3>Select Child</h3>
+    <span class="pchname_error_msg"></span>
+    {% for  key, item in data.cdata %}
+      <p><input type="checkbox" id="enquiryid" class="childchk pchname" name="child[]" checked value="{{ key }}"><label for="enquiryid">{{ item }}</label></p>
+    {% endfor %}
+    <input type="hidden" id="schoolid" name="schoolid" value="">
+    <div class="sub-clbck">
+      <a class="childenquiry-subinfo">Submit</a>
+    </div>
+  </div>
+</div>

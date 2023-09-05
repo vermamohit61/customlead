@@ -1,0 +1,99 @@
+<?php
+use Drupal\Core\Database\Database;
+/***
+ * Implementation hook_schema()
+ */
+function moengage_track_schema() {
+  $schema['moengage_track'] = array(
+    'description' => 'A table to store sample data',
+    'fields' => array(
+      'id' => array(
+      'description' => 'Holds the id value',
+      'type' => 'serial',
+      'unsigned' => TRUE,
+      'not null' => TRUE
+      ),
+      'unique_user_id' => array(
+        'description' => 'Unique user id value',
+        'type' => 'varchar',
+        'length' => '100',
+        'not null' => FALSE
+      ),
+      'first_name' => array(
+        'description' => 'First Name value',
+        'type' => 'varchar',
+        'length' => '100',
+        'not null' => FALSE,
+      ),
+      'filter_url' => array(
+        'description' => 'Filter Url value',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => FALSE,
+      ),
+      'username' => array(
+        'description' => 'User Name value',
+        'type' => 'varchar',
+        'length' => '100',
+        'not null' => FALSE
+      ),
+      'last_name' => array(
+        'description' => 'Last Name value',
+        'type' => 'varchar',
+        'length' => '100',
+        'not null' => FALSE,
+      ),
+      'mobile' => array(
+        'description' => 'Mobile value',
+        'type' => 'varchar',
+        'length' => '20',
+        'not null' => FALSE
+      ),
+      'email' => array(
+        'description' => 'Email value',
+        'type' => 'varchar',
+        'length' => '100',
+        'not null' => FALSE
+      ),
+      'track_type' => array(
+        'description' => 'Track Type value',
+        'type' => 'varchar',
+        'length' => '50',
+        'not null' => FALSE
+      ),
+      'publish_date' => array(
+        'description' => t('The publish date for the moengage track'),
+        'type' => 'datetime',
+        'mysql_type' => 'datetime',
+        'not null' => FALSE
+      ),
+    ),
+    'primary key' => array('id'),
+  );
+  return $schema;
+}
+/***
+ * Implementation hook_update_N()
+ */
+function moengage_track_update_9001() {
+  $spec = array(
+     'type' => 'int',
+     'description' => "Filter url track",
+     'length' => 11,
+     'not null' => FALSE,
+   );
+   $uid = array(
+    'description' => 'user id',
+    'type' => 'int',
+    'length' => '11',
+    'not null' => FALSE
+   );
+  $schema = Database::getConnection()->schema();
+  $schema->addField('moengage_track', 'result_found', $spec);
+  $schema->addField('moengage_track', 'uid', $uid);
+}
+
+function moengage_track_update_9002() {
+  $database = \Drupal::database();
+  $database->query("ALTER TABLE leadschool_moengage_track MODIFY filter_url VARCHAR(2000)");
+}

@@ -1,0 +1,4 @@
+common_leadschool:
+  version: 1.x
+  js:
+    js/common_leadschool.js: {}

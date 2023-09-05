@@ -1,0 +1,13 @@
+getintouchblockjs:
+  version: 1.x
+  js:
+      js/getintouch.js: {}
+  dependencies:
+    - core/drupal
+    - core/jquery
+    - core/drupalSettings
+googleanalyticstrackjs:
+  version: 1.x
+  js:
+      js/googleanalyticstrack.js: {}
+    

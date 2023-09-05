@@ -1,0 +1,5 @@
+name: 'Parent login registration'
+type: module
+description: 'Parent login registration'
+core_version_requirement: ^8.8 || ^9
+package: 'Custom'

@@ -1,0 +1,6 @@
+common_leadschool.settings_form:
+  title: 'BannerSettingsForm'
+  route_name: common_leadschool.settings_form
+  description: 'Link for banner text'
+  parent: system.admin_config_system
+  weight: 99

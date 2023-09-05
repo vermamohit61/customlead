@@ -1,0 +1,7 @@
+moengage_track.schools_search_filter_track:
+  path: '/schools-search-filter-track/{filter_url}'
+  defaults:
+    _controller: '\Drupal\moengage_track\Controller\SchoolsfilterController::schoolsSearchFilterTrack'
+    _format: json
+  requirements:
+    _access: 'TRUE'

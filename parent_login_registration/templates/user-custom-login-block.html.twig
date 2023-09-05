@@ -1,0 +1,17 @@
+{% if data['login_status'] is empty %}
+    <div class="my-account-wrapper log-in-link">
+        {{data['register_link']}}
+    </div>
+{% else %}
+    <div class="my-account-wrapper">
+           {% if data['user_f_name']|length > 8 %}
+              <span class="u-name">Hello! &nbsp;&nbsp; {{ data['user_f_name']|slice(0, 8) }}.. <span> </span></span>
+           {% else %}
+             <span class="u-name">Hello! &nbsp;&nbsp; {{ data['user_f_name'] }} <span> </span></span>
+           {% endif %}
+        <ol class="dash-nav">
+            <li><span class="dashimg">{{data['profile_link']}}</span></li>
+            <li>{{data['logout_link']}}</li>
+        </ol>
+    </div>
+{% endif %}
